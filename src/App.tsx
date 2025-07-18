@@ -1,35 +1,102 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useReducer } from "react";
+import "./App.css";
+import { TodoInput } from "./components/todo/TodoInput";
+import { TodoList } from "./components/todo/TodoList";
+import { TodoStatus } from "./components/todo/TodoStatus";
+import { ActionType, LIST, type Action, type List, type State } from "./types/todo";
+
+const initailState: State = {
+  list: [],
+};
+
+const storeInLocalStore = (list: List[]) => {
+  window.localStorage.setItem(LIST, JSON.stringify(list));
+};
+
+const reducer = (state: State, action: Action) => {
+  if (action.type === ActionType.ADD_ITEM) {
+    const list = [
+      ...state.list,
+      { itemname: action.payload, id: Date.now(), mark: false },
+    ];
+    storeInLocalStore(list);
+    return {
+      list: [...list],
+    };
+  }
+
+  if (action.type === ActionType.REMOVE_ITEM) {
+    const list = [...state.list.filter((item) => item.id !== action.payload)];
+    storeInLocalStore(list);
+    return {
+      list: [...list],
+    };
+  }
+  if (action.type === ActionType.UPDATE_MARK_DONE) {
+    const newList = state.list.map((item) => {
+      if (item.id === action.payload) {
+        return { ...item, mark: true };
+      }
+      return item;
+    });
+    storeInLocalStore(newList);
+    return {
+      list: [...newList],
+    };
+  }
+  if (action.type === ActionType.SET_LOCAL_DATA) {
+    if (action.payload) {
+      const list = JSON.parse(action.payload) as List[];
+      return {
+        list: [...list],
+      };
+    }
+  }
+  return state;
+};
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [state, dispatch] = useReducer(reducer, initailState);
+
+  useEffect(() => {
+    const list = window.localStorage.getItem(LIST);
+    if (list) {
+      dispatch({
+        type: ActionType.SET_LOCAL_DATA,
+        payload: list,
+      });
+    }
+  }, []);
+  const onAddItemInList = (item: string) => {
+    dispatch({
+      type: ActionType.ADD_ITEM,
+      payload: item,
+    });
+  };
+  const onDeleteItemInList = (item: number) => {
+    dispatch({
+      type: ActionType.REMOVE_ITEM,
+      payload: item,
+    });
+  };
+  const onItemMarkAsDone = (item: number) => {
+    dispatch({
+      type: ActionType.UPDATE_MARK_DONE,
+      payload: item,
+    });
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className="w-100 m-auto mt-10">
+      <TodoInput onAddItem={onAddItemInList} />
+      <TodoStatus list={state.list}/>
+      <TodoList
+        list={state.list}
+        onDeleteItem={onDeleteItemInList}
+        onMarkDone={onItemMarkAsDone}
+      />
+    </div>
+  );
 }
 
-export default App
+export default App;
